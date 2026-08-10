@@ -1,6 +1,8 @@
 
 # Eclipse SDV Blueprint — Hybrid Cloud–Edge Application Lifecycle Management
 
+A concise blueprint showing how to develop, validate, and deploy Software-Defined Vehicle (SDV) applications across cloud and edge. Includes a quick path to run the EV Range Extender demo in QEMU-based VMs.
+
 ## Table of Contents
 
 - [Demonstrated Use Case – EV Range Extender](#demonstrated-use-case--ev-range-extender)
@@ -30,17 +32,17 @@
 
 ---
 
-This blueprint demonstrates an end-to-end workflow for developing, validating and orchestrating Mixed-Critical Software-Defined Vehicle (SDV) applications across cloud and HPC edge device.
+This blueprint demonstrates an end-to-end workflow for developing, validating, and orchestrating mixed-critical SDV applications across cloud and edge. It shows how apps are developed and tested in the digital.auto Playground, published to the AOS Cloud app registry, and deployed to AosEdge virtual machines for validation.
 
-It showcases how SDV applications are developed in the Playground Digital Auto Portal using the C++ and Python platforms, pushed to AosEdge registry, and deployed onto an in-vehicle HPC running AosCore software package. In the updated architecture, the AutoWorx Runtime is replaced by the Syncer, KUKSA Bridge, and Zenoh protocol, while Eclipse KUKSA remains a core component. Vehicle signals are exchanged across heterogeneous compute domains with HPCs, Zonal and End ECUs — through Eclipse SCore and Eclipse Zenoh.
+The updated architecture replaces the AutoWorx Runtime with the Syncer, KUKSA Bridge, and Zenoh protocol while keeping Eclipse KUKSA as the vehicle signal broker. Vehicle signals flow across heterogeneous compute domains (HPCs, Zonal, and End ECUs) using Eclipse SCore and Eclipse Zenoh.
 
 ---
 
 ## Demonstrated Use Case – EV Range Extender
 
-Software defined Application  **EV Range Extender**.
+Software-defined application **EV Range Extender**.
 
-The EV Range Extender application continuously monitors the vehicle's battery State of Charge (SoC). When the SoC drops below a predefined threshold, the application initiates a power-saving mode by identifying and reducing or disabling non-essential functions, such as HVAC climate control and seat heating, while maintaining all critical driving and safety functions.
+The EV Range Extender application continuously monitors the vehicle's battery State of Charge (SoC). When the SoC drops below a predefined threshold, the application enters a power-saving mode by reducing or disabling non-essential functions (e.g., HVAC, seat heating) while preserving critical driving and safety functions.
 
 ### Use Case Flow
 
@@ -49,7 +51,7 @@ The table below shows how the EV Range Extender application monitors the battery
 | | Step 1 | Step 2 | Step 3 |
 | :--- | :--- | :--- | :--- |
 | **Who** | EV Range Extender | EV Range Extender | Driver |
-| **What** | Continuosly Monitors the Vehicle battery (State of Charge), and it drops below the predefined critical threshold. | EV Range Extender app automatically enters power-saving mode and instantly scaling down non-essential features (HVAC climate control, seat heating). | The EV Range Extender optimises energy consumption to extend the vehicle's driving range, while notifying the driver of the actions performed. |
+| **What** | Continuously monitors the vehicle battery (State of Charge); if it drops below the predefined threshold, the app reacts. | EV Range Extender app automatically enters power-saving mode and scales down non-essential features (HVAC, seat heating). | The EV Range Extender optimizes energy consumption to extend driving range and notifies the driver of actions performed. |
 | **Customer TouchPoints** | None | Cabin environment (HVAC eases off, seat heater turns off) | "Power Saving Mode" activated and Driving Range extended |
 
 
@@ -212,11 +214,11 @@ aos-signer go
 
 **Deploy the demo services**
 
-This step deploys the components which produces the data required for the SDV application (ev-range-extender).
+This step deploys the components that produce the data required for the SDV application (`ev-range-extender`).
 
-- Please perform these steps before deploying demo-services [Debug Steps for Application Deployment](#debug-steps-for-application-deployment).
+- Please perform these steps before deploying demo-services: see [Debug Steps for Application Deployment](#debug-steps-for-application-deployment).
 
-- The demo-services contains the deployment bundles for the EV Range Extender use case: `bms`, `range-ai`, `seat-ecu`, and `hvac`.
+- The `demo-services` folder contains deployment bundles for the EV Range Extender use case: `bms`, `range-ai`, `seat-ecu`, and `hvac`.
 
 - In the VM, navigate to the EV Range Extender service directory and package it for deployment:
 
@@ -239,15 +241,13 @@ aos-signer go
 
 - Verify the deployment result in [Aos Dashboard Services](https://sp.aoscloud.io/sp/services).
 - If the deployment does not appear or is rejected, update the service version in `kuksa-syncer/config.yaml` and re-run `aos-signer go`.
-- Please verfiy [deployment bundles](https://sp.aoscloud.io/sp/deployment-bundles) if any errors occured during deployment.
+- Please verify [deployment bundles](https://sp.aoscloud.io/sp/deployment-bundles) if any errors occur during deployment.
 
 #### Section 2 — Build and deploy the SDV application
 
-- Sign in to the digital.auto Playground at [playground.digital.auto](https://playground.digital.auto).
-- Open the EV Range Extender application from the playground at [this link](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/view).
-- For ev-range-extender application deployment select [aos-cloud-deployment plugin](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/plug?plugid=aos-cloud-deployment).
-- Upload sp.12 on the aos-deployment plugin (certificates will be available in .aos/security).
-- In the AOS Cloud Deployment plugin, choose the C++ option, then select the EV Range Extender application from the dropdown menu and click Build and Deploy.
+- Sign in to the digital.auto Playground at playground.digital.auto and open the EV Range Extender application.
+- Use the `aos-cloud-deployment` plugin and upload the required `.p12` certificate from `.aos/security`.
+- In the plugin choose the C++ option, select the EV Range Extender app, and click Build and Deploy.
 
 #### Section 3 — AOSEdge setup
 
@@ -281,7 +281,7 @@ After deployment, log in to the units via SSH and verify that the services are r
 ```bash
 crun --root=/run/crun list
 ```
-- Even deployment of services can be verfied on [units portal](https://oem.aoscloud.io/oem/units) on respective unit.
+- Service deployments can be verified on the [units portal](https://oem.aoscloud.io/oem/units) for the respective unit.
 
 **Manual steps for AOS-Edge**
 
@@ -299,17 +299,22 @@ Hint: This step is optional if the automation setup has already been completed.
 
   - After creating the required unit_set and subject in the AOS dashboard, deployment can be bound to the target VM and services will be deployed on respective VM's.
 
-  - Check application deployment on both VMs by login to units using ssh and verify the serivces deployed or not using 
+        - Check application deployment on both VMs by logging into the units via SSH and verify whether services are deployed using:
 
 ```bash
 crun --root=/run/crun list
 ```
- - Even deployment of services can be verfied on [AOS dashboard - units portal](https://oem.aoscloud.io/oem/units) on respective unit .
+- Service deployments can be verified on the [AOS dashboard - units portal](https://oem.aoscloud.io/oem/units) for the respective unit.
 
 ### Steps to demo
-1. After performing above steps of Section 1,2 and 3.
-1. Start the hardware simulator by running `./hardware-sim/pytk_hwsim.py` from the `eclipse-sdv-blueprint` directory (see [hardware-sim/README.md](hardware-sim/README.md)).
-1. Add ev-range-extender runtime and select ev-range-extender runtime on [playground dashboard](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/dashboard).
+1. After completing Sections 1, 2, and 3.
+2. Start the hardware simulator:
+
+```bash
+./hardware-sim/pytk_hwsim.py
+```
+
+3. Add the EV Range Extender runtime and select it on the Playground dashboard.
 
 ![EV Range Extender runtime selection on the playground dashboard](./images/image.png)
 
@@ -319,7 +324,7 @@ crun --root=/run/crun list
 1. When the battery level reaches 50%, the HVAC fan is automatically turned off.
 2. When the battery level reaches 30%, additional power-saving measures are applied, and the seat heating/cooling functions are turned off.
 3. When the HVAC fan is turned off, a slight increase in the estimated driving range can be observed.
-4. When the seat heating/cooling functions are also disabled, the estimated driving range increases furthe
+4. When the seat heating/cooling functions are also disabled, the estimated driving range increases further.
 5. Log in to VM1 using SSH:
 
 ```bash
@@ -388,19 +393,20 @@ Use the actual interface name on your machine, for example `eth0`, `ens33`, `enp
 
 ### Debug Steps for Application Deployment
 
-1. SSH into the Secondary-VM :
+1. SSH into the secondary VM:
 
 ```bash
-ssh ubuntu@10.0.0.X 
+ssh ubuntu@10.0.0.X
 ```
 
-- If the filesystem is mounted read-only, remount it as writable:
+If the filesystem is mounted read-only, remount it as writable:
 
 ```bash
-mount -o rw,remount /
+sudo mount -o rw,remount /
 ```
 
-- note:To get to know Secondary-VM ip 
+To discover the secondary VM IP:
+
 ```bash
 ip neigh
 ```
@@ -411,7 +417,7 @@ ip neigh
 vi /etc/hosts
 ```
 
-3. Add the following entry to the file:
+3. Add the following entry to the file (use `sudo` to edit or append):
 
 ```text
 10.0.0.100 main
