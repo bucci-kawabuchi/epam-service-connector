@@ -1,134 +1,186 @@
+# EV Range Extender Blueprint
 
-# Eclipse SDV Blueprint — Hybrid Cloud–Edge Application Lifecycle Management
+This blueprint demonstrates an **open, use-case-driven application lifecycle** for Software-Defined Vehicles (SDVs). The **EV Range Extender is the example application**; the **main deliverable is the reusable integration pattern** connecting application development, vehicle APIs, cloud-to-edge deployment, distributed communication, and validation.
+
+The blueprint combines Eclipse SDV projects and open interfaces so that individual components can be replaced or extended without changing the overall lifecycle concept. The hosted environments used by this repository are reference implementations of parts of that lifecycle, not the blueprint itself.
 
 ## Table of Contents
 
-- [Demonstrated Use Case – EV Range Extender](#demonstrated-use-case--ev-range-extender)
+- [Blueprint Purpose](#blueprint-purpose)
+  - [Eclipse Projects and Open Standards](#eclipse-projects-and-open-standards)
+  - [Other Reference Components](#other-reference-components)
+  - [Implementation Status](#implementation-status)
+- [Demonstrated Use Case: EV Range Extender](#demonstrated-use-case-ev-range-extender)
   - [Use Case Flow](#use-case-flow)
-  - [VSS signal used in the EV Range Extender sdv application](#vss-signal-used-in-the-ev-range-extender-sdv-application)
-- [SDV Application on digital.auto playground portal](#sdv-application-on-digitalauto-playground-portal)
-- [Architecture Overview](#architecture-overview)
-- [Phase 1 — Virtual Machines](#phase-1--virtual-machines)
-  - [End-to-End EV Range Extender Application Workflow](#end-to-end-ev-range-extender-application-workflow)
-  - [Component Distribution by Layer](#component-distribution-by-layer)
-  - [Eclipse components inside the blueprint phase 1](#eclipse-components-inside-the-blueprint-phase-1)
+  - [Vehicle Signals](#vehicle-signals)
+- [Current Reference Implementation](#current-reference-implementation)
+  - [Hosted Environments](#hosted-environments)
+  - [Current Workflow and Validation Boundary](#current-workflow-and-validation-boundary)
+- [Proposed Virtual-Prototyping Extension](#proposed-virtual-prototyping-extension)
+- [Phase 1 Reference Implementation: QEMU](#phase-1-reference-implementation-qemu)
+  - [Component Distribution](#component-distribution)
   - [System Setup Workflow](#system-setup-workflow)
-    - [Section 1 — VM setup and deployment flow](#section-1--vm-setup-and-deployment-flow)
-    - [Section 2 — Build and deploy the SDV application](#section-2--build-and-deploy-the-sdv-application)
-    - [Section 3 — AosEdge setup](#section-3--aosedge-setup)
-  - [Steps to demo](#steps-to-demo)
+  - [Run the Demo](#run-the-demo)
   - [Signal Flow and Internals](#signal-flow-and-internals)
-  - [Debug steps for network on VM's](#debug-steps-for-network-on-vms)
-  - [Debug Steps for Application Deployment](#debug-steps-for-application-deployment)
-- [Phase 2 — Physical Hardware](#phase-2--physical-hardware)
-  - [How the flow works](#how-the-flow-works)
-  - [What's running in each layer](#whats-running-in-each-layer)
-  - [Additional signals unlocked in Phase 2](#additional-signals-unlocked-in-phase-2)
-  - [Additional Eclipse components inside the blueprint phase 2](#additional-eclipse-components-inside-the-blueprint-phase-2)
-- [Phase Comparison](#phase-comparison)
+  - [Troubleshooting](#troubleshooting)
+- [Planned Phase 2: Physical Hardware](#planned-phase-2-physical-hardware)
 - [Project Resources](#project-resources)
 
 ---
 
-This blueprint demonstrates an end-to-end workflow for developing, validating and orchestrating Mixed-Critical Software-Defined Vehicle (SDV) applications across cloud and HPC edge device.
+## Blueprint Purpose
 
-It showcases how SDV applications are developed in the Playground Digital Auto Portal using the C++ and Python platforms, pushed to AosEdge registry, and deployed onto an in-vehicle HPC running AosCore software package. In the updated architecture, the AutoWorx Runtime is replaced by the Syncer, KUKSA Bridge, and Zenoh protocol, while Eclipse KUKSA remains a core component. Vehicle signals are exchanged across heterogeneous compute domains with HPCs, Zonal and End ECUs — through Eclipse SCore and Eclipse Zenoh.
+The blueprint is intended to show how an SDV application can move through a coherent lifecycle while using Eclipse projects at the relevant integration points:
+
+```text
+Define the use case and VSS contract
+        ↓
+Develop and package the application
+        ↓
+Publish it to a lifecycle-management backend
+        ↓
+Deploy and run it on an edge target
+        ↓
+Exchange vehicle signals across compute domains
+        ↓
+Observe, validate, update, and repeat
+```
+
+It is not intended to prescribe one hosted portal, cloud service, hardware platform, or programming language. The current implementation selects concrete technologies to make the pattern reproducible. Future implementations can substitute equivalent components while retaining the same interfaces and lifecycle stages.
+
+### Eclipse Projects and Open Standards
+
+| Project or standard | Role in the blueprint | Status |
+|---|---|---|
+| [Eclipse AutoWRX](https://github.com/eclipse-autowrx) | Open-source implementation of the digital.auto development and prototyping environment; also provides the integration used to connect the running demo to the Playground dashboard | Used for the current dashboard integration; broader virtual-prototyping use is proposed |
+| [Eclipse KUKSA](https://github.com/eclipse-kuksa) | Vehicle data broker and API for reading and writing vehicle signals | Implemented in Phase 1 |
+| [Eclipse Zenoh](https://github.com/eclipse-zenoh) | Lightweight communication between the HPC and simulated ECU domains | Implemented in Phase 1 |
+| [Eclipse Velocitas](https://github.com/eclipse-velocitas) | SDKs and vehicle-model tooling that can help keep Python prototypes and C++ implementations aligned to the same vehicle API | Proposed for the prototype-to-C++ workflow |
+| [Eclipse S-CORE](https://github.com/eclipse-score) | Communication and middleware capabilities for the planned HPC-to-zonal integration | Planned for Phase 2 |
+| [Eclipse ThreadX](https://github.com/eclipse-threadx/threadx) | RTOS for the planned microcontroller-based end-ECU layer | Planned for Phase 2 |
+| [COVESA Vehicle Signal Specification](https://github.com/COVESA/vehicle_signal_specification) | Common semantic contract for vehicle signals across development and deployment environments | Used throughout the blueprint |
+
+### Other Reference Components
+
+| Component | Role in the current implementation |
+|---|---|
+| [AosCore](https://github.com/aosedge) | Open-source edge runtime and orchestrator deployed on the QEMU targets |
+| AosCloud | Hosted reference backend for application registry, target configuration, and lifecycle orchestration |
+| [QEMU](https://www.qemu.org/) | Virtualizes the two Linux compute targets used by Phase 1 |
+| Hardware simulator in this repository | Supplies reproducible battery and cabin inputs to the deployed system |
+
+### Implementation Status
+
+| Scope | Status | What it demonstrates |
+|---|---|---|
+| Phase 1: QEMU reference implementation | Available | Build, registry publication, AosEdge deployment, distributed vehicle-signal flow, dashboard observation, and validation on two QEMU VMs |
+| Playground virtual-prototype stage | Proposed | Python business-logic validation against a virtual vehicle before the production implementation is built and deployed |
+| Phase 2: physical hardware | Under development | Migration of the reference architecture to HPC, zonal, and end-ECU hardware |
 
 ---
 
-## Demonstrated Use Case – EV Range Extender
+## Demonstrated Use Case: EV Range Extender
 
-Software defined Application  **EV Range Extender**.
+The EV Range Extender application monitors the traction battery State of Charge (SoC). When the SoC crosses configured thresholds, the application reduces non-essential energy consumption—such as HVAC and seat heating—while leaving critical driving and safety functions unaffected. The dashboard shows the resulting actuator state and estimated-range changes.
 
-The EV Range Extender application continuously monitors the vehicle's battery State of Charge (SoC). When the SoC drops below a predefined threshold, the application initiates a power-saving mode by identifying and reducing or disabling non-essential functions, such as HVAC climate control and seat heating, while maintaining all critical driving and safety functions.
+The example is intentionally understandable at the vehicle-feature level. Its purpose is to exercise the blueprint's software lifecycle and signal integration, not to provide a production-ready energy-management algorithm.
+
+The current demo also does not make a functional-safety or mixed-criticality certification claim. Those concerns require target-specific architecture, isolation, assurance, and validation beyond this reference use case.
 
 ### Use Case Flow
 
-The table below shows how the EV Range Extender application monitors the battery State of Charge (SoC), evaluates vehicle functions, and automatically activates power-saving measures when required.
+| Step | Actor | Behaviour | Driver-visible result |
+|---|---|---|---|
+| 1. Monitor | EV Range Extender | Continuously reads battery SoC and related powertrain values | No action while charge remains above the configured thresholds |
+| 2. Reduce load | EV Range Extender | At 50% SoC, turns off the HVAC fan; at 30%, also turns off seat heating/cooling | Cabin comfort functions are reduced in stages |
+| 3. Report | EV Range Extender and dashboard | Publishes actuator states and updated estimated range | The driver can observe power-saving actions and their effect |
 
-| | Step 1 | Step 2 | Step 3 |
-| :--- | :--- | :--- | :--- |
-| **Who** | EV Range Extender | EV Range Extender | Driver |
-| **What** | Continuosly Monitors the Vehicle battery (State of Charge), and it drops below the predefined critical threshold. | EV Range Extender app automatically enters power-saving mode and instantly scaling down non-essential features (HVAC climate control, seat heating). | The EV Range Extender optimises energy consumption to extend the vehicle's driving range, while notifying the driver of the actions performed. |
-| **Customer TouchPoints** | None | Cabin environment (HVAC eases off, seat heater turns off) | "Power Saving Mode" activated and Driving Range extended |
+> **Why this matters for OEMs:** The use case demonstrates how an independently deployable vehicle application can observe shared vehicle data, coordinate functions across compute domains, and be updated through a managed lifecycle.
 
+### Vehicle Signals
 
-> **Why this matters for OEMs:** Unlike a manual "Eco Mode" button, the EV Range Extender showcases how SDV applications can continuously monitor vehicle conditions, make intelligent decisions, and automatically optimise energy usage to extend driving range while maintaining safety and enhancing the driver experience
-
-###  VSS signal used in the EV Range Extender sdv application
-
-| Infrastructure Layer | VSS Signal | Vehicle Functions Layer | Functionality of the signal |
-|----|---|---|---|
-| VM1      | `Vehicle.Powertrain.TractionBattery.StateOfCharge.Current` |  BMS | Triggers power-saving mode when charge is low |
-| VM1	   |  `Vehicle.Powertrain.TractionBattery.CurrentVoltage` |  BMS | Battery voltage monitored by the Battery Monitoring System |
-| VM1	   |  `Vehicle.Powertrain.TractionBattery.CurrentCurrent` |  BMS | Battery current monitored by the Battery Monitoring System |
-| VM2      | `Vehicle.Cabin.HVAC.AmbientAirTemperature` |  HVAC ECU | Adjusted to save power and bridged to VM1 |
-| VM2      | `Vehicle.Cabin.Seat.Row1.DriverSide.Heating` |  Seat ECU | Disabled to save power and bridged to VM1 |
-
-| VM2      | `Vehicle.Cabin.Seat.Row1.DriverSide.HeatingCooling` |  Seat ECU | Disabled to save power and bridged to VM2 |
+| Runtime location | VSS signal | Function | Use in the demo |
+|---|---|---|---|
+| VM1 | `Vehicle.Powertrain.TractionBattery.StateOfCharge.Current` | BMS | Triggers staged power-saving behaviour |
+| VM1 | `Vehicle.Powertrain.TractionBattery.CurrentVoltage` | BMS | Provides battery voltage |
+| VM1 | `Vehicle.Powertrain.TractionBattery.CurrentCurrent` | BMS | Provides battery current |
+| VM2 | `Vehicle.Cabin.HVAC.AmbientAirTemperature` | HVAC ECU | Represents a cabin/HVAC value synchronized between domains |
+| VM2 | `Vehicle.Cabin.Seat.Row1.DriverSide.Heating` | Seat ECU | Represents seat-heating state |
+| VM2 | `Vehicle.Cabin.Seat.Row1.DriverSide.HeatingCooling` | Seat ECU | Is disabled as part of the second power-saving stage |
 
 ---
 
-## SDV Application on digital.auto playground portal
+## Current Reference Implementation
 
-We can develop and test the SDV application directly in the digital.auto Playground portal without requiring any hardware-specific knowledge. The dashboard provides a visual interface to demonstrate and validate the application’s functionality, enabling rapid development and evaluation in a simulated environment.
+The current implementation uses a hosted development portal and lifecycle backend to make the blueprint quick to access, while running the actual application and support services on QEMU-based edge targets.
 
- **[Open Application on digital.auto Playground](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/code)**
+### Hosted Environments
 
-The digital.auto Playground enables you to simulate vehicle signals and observe the application's behaviour in a virtual environment before deploying it to real hardware. This allows OEMs to validate business logic, verify signal interactions, and refine the end-to-end customer experience through rapid testing and iteration.
+- **digital.auto Playground** is the convenient hosted environment used to edit and host the application definition, trigger the build and deployment flow, select the runtime, and visualize the running demo. [Eclipse AutoWRX](https://github.com/eclipse-autowrx) is the open-source implementation of digital.auto and is the appropriate basis for reproducing or extending these capabilities outside the hosted Playground.
+- **AosCloud** is the hosted lifecycle-management backend used by this reference implementation for the application registry, target configuration, and deployment orchestration. It is one implementation choice within the blueprint rather than a required definition of the blueprint concept.
+- **AosCore on QEMU** is where the current application is deployed and executed. The supporting BMS, HVAC, seat, and range services run across the two virtual machines and exchange data through KUKSA and Zenoh.
+
+The repository currently documents and validates this specific combination. Alternative deployments using a local AutoWRX stack or another compatible lifecycle backend are possible extensions, but they are not part of the tested setup described below.
+
+> **Reproducibility note:** The current deployment procedure requires access to the hosted AosCloud service. AosCloud is therefore treated here as a reference lifecycle backend, not as a mandatory Eclipse blueprint component. This repository does not yet provide or validate a fully self-hosted replacement for that backend.
+
+**[Open the EV Range Extender in digital.auto Playground](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/view)**
+
+### Current Workflow and Validation Boundary
+
+```text
+digital.auto Playground
+  Edit/configure the application and trigger the C++ build
+        ↓
+AosCloud
+  Store the package, configure the target, and orchestrate deployment
+        ↓
+AosCore on QEMU-VM-1 and QEMU-VM-2
+  Run the application and supporting ECU services
+        ↓
+Hardware simulator + KUKSA + Zenoh
+  Provide signals and connect the simulated vehicle domains
+        ↓
+digital.auto Playground dashboard
+  Observe the behaviour of the deployed system
+```
+
+In the current setup, Playground enables code editing, code hosting, the build/deployment trigger, and dashboard visualization. **Functional validation of the EV Range Extender takes place after deployment on the QEMU reference environment; the application is not first executed and validated as a virtual prototype inside Playground.** This distinction is important when evaluating what the current blueprint demonstrates.
 
 ---
 
-## Architecture Overview
+## Proposed Virtual-Prototyping Extension
 
-The blueprint is implemented in two phases. 
+A useful next step is to add an explicit virtual-prototype stage before the C++ application is packaged and deployed. This would make the lifecycle closer to the intended digital.auto development model while remaining a relatively small extension of the current setup:
 
-**Phase 1** Leverages virtual machines, enabling teams to develop, test, and validate functionality without relying on physical hardware. 
+1. Develop the initial vehicle-application logic in Python in digital.auto Playground.
+2. Run it against an AutoWRX virtual vehicle environment, such as the [AutoWRX SDV Runtime](https://github.com/eclipse-autowrx/sdv-runtime), using simulated VSS inputs.
+3. Validate thresholds, signal interactions, state transitions, and expected outputs before edge deployment.
+4. Capture the validated VSS model, configuration, scenarios, and automated behavioural tests as the portable application contract.
+5. Productionize the application in C++ using the [Eclipse Velocitas C++ SDK](https://github.com/eclipse-velocitas/vehicle-app-cpp-sdk) and common vehicle-model tooling where applicable.
+6. Build and deploy the C++ implementation through the existing AosCloud/AosCore reference flow, then run the same scenarios on QEMU to verify behavioural parity.
 
-**Phase 2** Transitions the solution to production-grade automotive hardware, enabling validation under real-world conditions and ensuring readiness for deployment. While the edge hardware is replaced with automotive-grade devices, the cloud infrastructure, application logic, and interfaces remain unchanged across both phases, providing a seamless path from development to production
+This should be described as **Python prototyping followed by C++ productionization**, not as automatic Python-to-C++ conversion. The portable assets are the vehicle API contract, configuration, scenarios, expected behaviour, and tests; the C++ application remains a deliberate implementation that must be verified independently.
 
 ---
 
-## Phase 1 — Virtual Machines
+## Phase 1 Reference Implementation: QEMU
 
 ![Architecture Phase 1](./images/architecture_phase1.svg)
 
-Phase 1 is designed for rapid application development and validation. By running the full stack in QEMU-based virtual machines, developers can build, test, and refine functionality on standard computing platforms before moving to automotive hardware. This software-defined environment accelerates innovation while reducing dependency on physical devices.
+Phase 1 is the implemented reference environment. It runs the application and its supporting services across two QEMU-based Linux VMs, allowing the lifecycle, deployment, vehicle-data flow, and application behaviour to be exercised without automotive hardware.
 
-### End-to-End EV Range Extender Application Workflow
+### Component Distribution
 
-```
-1. Develop and configure EV Range Extender Application in digital.auto Playground portal
-        ↓
-2. App is published to the AosCloud App Registry once it is successfully build
-        ↓
-3. AosCore fetches the latest app and deploy it to the QEMU VM
-        ↓
-4. AosCore on the QEMU VM configure the app and systemd is running this app as service
-        ↓
-5. The app(service) reads/writes vehicle signals via eclipse-kuksa
-        ↓
-6. App(service) functionality will be updated in the digital.auto Playground dash board
-
-```
-
-### Component Distribution by Layer
-
-| Layer | What It Is | What It Does |
+| Layer | Current component | Responsibility |
 |---|---|---|
-|  **AosCloud** | Fleet Management + App Registry | Manages the lifecycle, versioning, and fleet-wide deployment of vehicle applications |
-|  **QEMU-VM-1** (Linux) | AosCore + sdv app | The brain — runs the vehicle app, handles signal logic |
-|  **QEMU-VM-2** (Linux) | Services running Seat Control Module, HVAC ECU, Range Compute AI, Battery Monitoring System | Simulates the end-ECU layer that controls physical components |
-|  **Communication stack** | Eclipse Zenoh | Connects QEMU-VM-1 and QEMU-VM-2 — lightweight pub/sub messaging |
-
-### Eclipse components inside the blueprint phase 1
-
-| Component | Role |
-|---|---|
-| `eclipse-autowrx`       | Digital auto component including a communication manager to send the signal to Playground dashboard  |
-| `eclipse-kuksa` | Vehicle signal broker — reads and writes VSS signals |
-| `eclipse-zenoh` | Modern pub/sub communication protocol between HPC-VM and End-VM |
-
+| Hosted development environment | digital.auto Playground | Application editing and hosting, build/deployment trigger, runtime selection, and dashboard visualization |
+| Lifecycle backend | AosCloud | Application registry, versioning, target configuration, and deployment orchestration |
+| QEMU-VM-1 | AosCore, EV Range Extender application, KUKSA integration | Runs the main application and battery-related signal logic |
+| QEMU-VM-2 | BMS, range, HVAC, and seat services | Simulates vehicle functions and the end-ECU domain |
+| Cross-domain communication | Eclipse Zenoh | Exchanges data between the two virtual-machine domains |
+| Vehicle data | Eclipse KUKSA and COVESA VSS | Provides a consistent vehicle-signal model and broker API |
+| Host-side input | Hardware simulator | Generates the inputs used to validate the deployed system |
 
 ### System Setup Workflow
 
@@ -147,7 +199,7 @@ The setup is organized into sub-sections that guide the VM setup and deployment 
 
 This step sets up two QEMU VM instances where the SDV application and its surrounding components are run.
 
-- Download the latest Aos VM image package of bosch and provisioning script from the AosEdge meta-aos-vm release page: [meta-aos-vm releases](https://github.com/aosedge/meta-aos-vm/releases/) VM images named Version 6.x.x-bosch.x (download latest release)
+- Download the latest Bosch Aos VM image package and provisioning script from the [meta-aos-vm releases](https://github.com/aosedge/meta-aos-vm/releases/) page. Select the latest image named `6.x.x-bosch.x`.
 
   - As an alternative to using the release images, you can build the VM image yourself by following [meta-aos-vm](https://github.com/aosedge/meta-aos-vm) on the `demo-bosch` branch.
 
@@ -160,14 +212,14 @@ This step sets up two QEMU VM instances where the SDV application and its surrou
 
 - You may need to run `chmod +x aos_vm.sh` to allow the execution of `aos_vm.sh`.
 
-- If the Aos certificates are unavailable or the setup has not been completed, please follow the steps on [Aos QuickStart](https://docs.aosedge.tech/docs/quick-start/)
+- If the Aos certificates are unavailable or the setup has not been completed, follow the [Aos QuickStart](https://docs.aosedge.tech/docs/quick-start/).
 
-  - Complete the QuickStart guide only up to get-access step. No additional steps are required.
-Perform these steps on WSL or Ubuntu.
+  - Complete the QuickStart guide only through the **Get access** step. No additional QuickStart steps are required.
+  - Perform these steps on WSL or Ubuntu.
 
-  - Required steps: 
-    1. [Setup your host](https://docs.aosedge.tech/docs/quick-start/set-up/)
-     2. [Get access](https://docs.aosedge.tech/docs/quick-start/get-access)
+  - Required steps:
+    1. [Set up your host](https://docs.aosedge.tech/docs/quick-start/set-up/)
+    2. [Get access](https://docs.aosedge.tech/docs/quick-start/get-access)
 
 - Access the main node with `ssh root@10.0.0.100` and the secondary node with `ssh root@10.0.0.x`, where the address can be discovered with:
 
@@ -188,11 +240,11 @@ Perform these steps on WSL or Ubuntu.
 
 - Log in to the [Aos Dashboard](https://api.aoscloud.io/account/start), select the OEM login option, and choose the certificate-based sign-in that appears when you open the [Units tab](https://oem.aoscloud.io/oem/units).
 
-- If Unit shown offline on Aos Dashboard follow the [Debug Steps](#debug-steps-for-network-on-vms)
+- If the unit appears offline in the Aos Dashboard, follow the [VM network troubleshooting steps](#vm-network).
 
 **Install the core components**
 
-This step installs the core components e.g. `kuksa-client`, `zenoh`, and `pylibs`
+This step installs the core components, including `kuksa-client`, `zenoh`, and `pylibs`.
 
 - Download the Aos VM layers package from the same release page: [aos-vm layers package](https://github.com/aosedge/meta-aos-vm/releases/tag/v6.1.1-bosch.2)
 
@@ -215,7 +267,7 @@ This step installs the core components e.g. `kuksa-client`, `zenoh`, and `pylibs
 
 This step deploys the components that produce the data required for the SDV application (ev-range-extender).
 
-- Please perform these steps before deploying demo-services [Debug Steps for Application Deployment](#debug-steps-for-application-deployment).
+- Before deploying the demo services, complete the [application-deployment troubleshooting step](#application-deployment) if name resolution between the VMs is not already configured.
 
 - The `demo-services` folder contains the deployment bundles for the EV Range Extender use case: `bms`, `range-ai`, `seat-ecu`, and `hvac`.
 
@@ -228,9 +280,9 @@ This step deploys the components that produce the data required for the SDV appl
   ```
 - After the publish step, verify in the [AosCloud Service-Service Provider](https://sp.aoscloud.io/sp/services).
 
-**Playground Dashboard Connectivity**
+**Configure Playground dashboard connectivity**
 
-- Kuksa-syncer is used for dashboard connectivity of playground which will be deployed on AosCloud platform .
+- Deploy `kuksa-syncer`, which connects the running system to the Playground dashboard:
 
   ```bash
   source ~/.aos/venv/bin/activate
@@ -240,19 +292,19 @@ This step deploys the components that produce the data required for the SDV appl
 
 - Verify the deployment result in [Aos Dashboard Services](https://sp.aoscloud.io/sp/services).
 - If the deployment does not appear or is rejected, update the service version in `kuksa-syncer/config.yaml` and re-run `aos-signer go`.
-- Please verify [deployment bundles](https://sp.aoscloud.io/sp/deployment-bundles) if any errors occur during deployment.
+- Check the [deployment bundles](https://sp.aoscloud.io/sp/deployment-bundles) if an error occurs during deployment.
 
 #### Section 2 — Build and deploy the SDV application
 
 - Sign in to the digital.auto Playground at [playground.digital.auto](https://playground.digital.auto).
-- Open the EV Range Extender application from the playground at [this link](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/view).
-- For ev-range-extender application deployment select [aos-cloud-deployment plugin](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/plug?plugid=aos-cloud-deployment).
-- Upload sp.12 on the aos-deployment plugin (certificates will be available in .aos/security).
-- In the AosCloud Deployment plugin, choose the `C++` option, then select the `EV Range Extender` application from the dropdown menu and click `Build and Deploy` button.
+- Open the [EV Range Extender application](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/view).
+- Select the [AosCloud Deployment plugin](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/plug?plugid=aos-cloud-deployment).
+- Upload the Service Provider `.p12` certificate from `.aos/security`.
+- In the AosCloud Deployment plugin, choose `C++`, select `EV Range Extender` from the dropdown menu, and click `Build and Deploy`.
 
 #### Section 3 — AosEdge setup
 
-The script `aos-automation.py` performs the end-to-end [AosEdge setup](AosEdge%20setup%20(manual).md), including unit config updates, unit-set creation, subject creation, and service assignment. 
+The script `aos-automation.py` performs the end-to-end AosEdge setup, including unit-config updates, unit-set creation, subject creation, and service assignment. See [AosEdge setup (manual)](AosEdge%20setup%20(manual).md) for the equivalent manual procedure.
 
 1. Change into the automation directory
    ```bash
@@ -283,18 +335,20 @@ The script `aos-automation.py` performs the end-to-end [AosEdge setup](AosEdge%2
     ```
     Service deployments can be verified on the [units portal](https://oem.aoscloud.io/oem/units) for the respective unit.
 
-### Steps to demo
- _*Above Section 1,2 and 3 should be completed._
+### Run the Demo
 
-1. Open [Playground dashboard](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/dashboard). In the right pane, click `Add Runtime`, input `Runtime-ev-range-extender` runtime, and click `Add`. Find `Runtime-ev-range-extender` in the Runtime drop down and select it.
+Complete Sections 1, 2, and 3 above before running the demo.
+
+1. Open the [Playground dashboard](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/dashboard). In the right pane, click `Add Runtime`, enter `Runtime-ev-range-extender`, and click `Add`. Select `Runtime-ev-range-extender` from the runtime dropdown.
 
 ![EV Range Extender runtime selection on the playground dashboard](./images/image.png)
 
-1. On your Host, start the hardware simulator by running `./hardware-sim/pytk_hwsim.py` from the `eclipse-sdv-blueprint` directory (see [hardware-sim/README.md](hardware-sim/README.md)).
+2. On the host, start the hardware simulator by running `./hardware-sim/pytk_hwsim.py` from the `eclipse-sdv-blueprint` directory. See [hardware-sim/README.md](hardware-sim/README.md) for details.
 
-1. Click `Start` button in the hardware simulator to start simulating driving vehicle.
+3. Click `Start` in the hardware simulator to begin the driving simulation.
 
-**Observe the threshold-based behaviour**:
+**Observe the threshold-based behaviour:**
+
 1. When the battery level reaches 50%, the HVAC fan is automatically turned off.
 2. When the battery level reaches 30%, additional power-saving measures are applied, and the seat heating/cooling functions are turned off.
 3. When the HVAC fan is turned off, a slight increase in the estimated driving range can be observed.
@@ -311,39 +365,38 @@ The script `aos-automation.py` performs the end-to-end [AosEdge setup](AosEdge%2
     journalctl -f | grep "range-ext"
     ```
 
-7. Check the application level logs
+7. Review the application-level logs and confirm that the expected threshold actions occurred.
 
 ### Signal Flow and Internals
 
-The demo runs as a closed loop across host, virtual machines, and the playground runtime.
+The demo runs as a closed loop across the host, virtual machines, and Playground dashboard integration.
 
 1. **Hardware simulator (host side)** publishes battery and cabin control values.
 2. **VM-1 runtime stack** receives battery values and updates the vehicle signal broker.
-3. **Vehicle signal broker (Kuksa)** stores and distributes current vehicle values used by the application and runtime services.
-4. **Bridge layer** transfers cabin-related signal and  updates between QEMU-VM-1 and QEMU-VM-2 so both compute domains stay synchronized.
-5. **VM2 ECU services** apply HVAC and seat actions and publish actuator status back to the dashboard.
+3. **Vehicle-signal broker (KUKSA)** stores and distributes current vehicle values used by the application and runtime services.
+4. **Bridge layer** transfers cabin-related signals and updates between QEMU-VM-1 and QEMU-VM-2 so that both compute domains remain synchronized.
+5. **VM2 ECU services** apply HVAC and seat actions and publish actuator status to the dashboard integration.
 
-### Debug steps for network on VM's
+### Troubleshooting
+
+#### VM Network
 
 Before performing these checks, verify the bridge and external interface names on your host and replace `aos-br0` / `eth0` if they differ.
 
-1. Check the bridge and IP forwarding still exist
+1. Check that the bridge and IP forwarding are configured:
 
     ```bash
     ip addr show aos-br0
     cat /proc/sys/net/ipv4/ip_forward
     ```
 
-2. This should show `10.0.0.1/24` on the bridge and `1` for forwarding. 
-<br>
-<br>
-If forwarding shows `0`:
+2. The output should show `10.0.0.1/24` on the bridge and `1` for forwarding. If forwarding shows `0`, enable it:
 
     ```bash
     sudo sysctl -w net.ipv4.ip_forward=1
     ```
 
-3. Check MASQUERADE rule exists (this is the one that keeps disappearing)
+3. Check that a `MASQUERADE` rule exists:
 
     ```bash
     sudo iptables -t nat -L POSTROUTING -n -v
@@ -355,7 +408,7 @@ If forwarding shows `0`:
    sudo iptables -t nat -A POSTROUTING -o <external-interface> -j MASQUERADE
    ```
 
-4. Check FORWARD chain allows traffic both ways
+4. Check that the `FORWARD` chain allows traffic in both directions:
 
     ```bash
     sudo iptables -L FORWARD -n -v
@@ -367,9 +420,9 @@ If forwarding shows `0`:
     ```
     Use the actual interface name on your machine, for example `eth0`, `ens33`, `enp3s0`, or another host-facing NIC.
 
-### Debug Steps for Application Deployment
+#### Application Deployment
 
-1. SSH into the Secondary-VM :
+1. SSH into the secondary VM:
 
     ```bash
     ssh ubuntu@10.0.0.X 
@@ -380,7 +433,8 @@ If forwarding shows `0`:
     mount -o rw,remount /
     ```
 
-- note: To find the secondary-VM ip 
+    To find the secondary VM's IP address, run:
+
     ```bash
     ip neigh
     ```
@@ -399,9 +453,9 @@ If forwarding shows `0`:
 
 4. Save and exit `vi`:
 
-- press `Esc`
-- type `:wq`
-- press `Enter`
+   - Press `Esc`.
+   - Type `:wq`.
+   - Press `Enter`.
 
 5. Verify DNS resolution for `main`:
 
@@ -412,42 +466,40 @@ If forwarding shows `0`:
 
 ---
 
-## Phase 2 — Physical Hardware
+## Planned Phase 2: Physical Hardware
 
 ![Architecture Phase 2](./images/architecture_phase2.svg)
 
-Phase 2 replaces the virtual machines with **automotive hardware**. The cloud layer and application logic stay identical — this phase validates that the same software runs correctly on the hardware an OEM would actually put in a vehicle.
+Phase 2 is a design target and is not yet available for trial. It is intended to replace the two virtual machines with representative HPC, zonal, and end-ECU hardware while preserving the VSS application contract and as much of the Phase 1 lifecycle as practical. The exact hardware integration and software distribution may change as implementation progresses.
 
-A key addition in Phase 2 is the **End ECU layer** (STM32), which represents the deepest level of the vehicle's electrical architecture — the microcontrollers directly attached to physical sensors and actuators like motors, lights, and HVAC.
+The planned end-ECU layer uses an STM32-class microcontroller to represent the compute directly connected to sensors and actuators. The phase also introduces an explicit zonal layer between the HPC and end ECU.
 
-**Note**: Phase 2 is still under development and is not ready for trial.
-
-### How the flow works
+### Planned Flow
 
 ```
-1. Same cloud flow as Phase 1 (AosCloud → App Registry → App Fetching)
+1. Use the same reference lifecycle flow as Phase 1
         ↓
-2. App runs on a NXP S32G2 board (automotive-grade processor)
+2. Run the application on an NXP S32G2-based HPC target
         ↓
-3. HPC communicates with Zonal Raspberry Pi over eclipse-score / SOME-IP
+3. Connect the HPC to a Raspberry Pi-based zonal target using Eclipse S-CORE / SOME/IP
         ↓
-4. Zonal Pi communicates with End STM32 microcontroller over eclipse-zenoh
+4. Connect the zonal target to an STM32-based end ECU using Eclipse Zenoh
         ↓
-5. STM32 directly controls HVAC, infotainment display, seat ventilation
+5. Exercise representative HVAC, display, and seat actuators
 ```
 
-### What's running in each layer
+### Planned Component Distribution
 
-| Layer | Hardware | Software | What It Does |
+| Layer | Candidate hardware | Planned software | Responsibility |
 |---|---|---|---|
-|  **AosCloud** | — | Fleet Management + App Registry | Same as Phase 1 |
-|  **HPC** | NXP S32G2 | AosCore + digital.auto + `eclipse-autosd` | Automotive-grade compute, runs the main app logic |
-|  **Zonal** | Raspberry Pi | Linux + Eclipse AutoWorx stack | Bridges HPC signals to physical ECU layer |
-|  **End ECU** | STM32 | `eclipse-threadX` | Directly controls physical actuators (HVAC, lights, display) |
-|  **HPC ↔ Zonal** | — | Eclipse SCore / SOME-IP | Standard automotive bus protocol |
-|  **Zonal ↔ End** | — | Eclipse Zenoh | Lightweight pub/sub messaging for constrained devices |
+| Lifecycle backend | — | AosCloud reference backend | Registry and deployment orchestration, as in Phase 1 |
+| HPC | NXP S32G2 | AosCore, EV Range Extender, and candidate Eclipse AutoSD integration | Runs the primary application logic |
+| Zonal | Raspberry Pi | Linux and SDV integration services | Bridges the HPC and end-ECU domains |
+| End ECU | STM32 | Eclipse ThreadX | Runs representative actuator control |
+| HPC ↔ zonal | — | Eclipse S-CORE / SOME/IP | Provides the planned automotive middleware path |
+| Zonal ↔ end ECU | — | Eclipse Zenoh | Provides lightweight pub/sub communication |
 
-### Additional signals unlocked in Phase 2
+### Candidate Additional Signals
 
 | Signal | Layer | Purpose |
 |---|---|---|
@@ -455,16 +507,17 @@ A key addition in Phase 2 is the **End ECU layer** (STM32), which represents the
 | `Vehicle.Infotainment.Display.Brightness` | End ECU | Dim screen to reduce power draw |
 | `Vehicle.Cabin.Seat.Ventilation.Level` | End ECU | Disable seat ventilation |
 
-> **For OEMs:** Phase 2 is where you validate that the app behaviour confirmed in the Playground and Phase 1 translates faithfully onto your target hardware. The signal list above represents exactly the vehicle capabilities your app will control in a real car.
+These signals are candidates for expanding the physical-hardware demonstration; they are not implemented by the current Phase 1 setup.
 
 
-### Additional Eclipse components inside the blueprint phase 2
+### Additional Eclipse Projects Planned for Phase 2
 
 | Component | Role |
 |---|---|
-| `eclipse-autosd` | Automotive grade Linux OS from RedHat |
-| `eclipse-zenoh` | Modern communication protocol designed for SDV |
-| `eclipse-threadx` | Safe RTOS for microcontrollers |
+| [Eclipse AutoSD](https://github.com/eclipse-autosd/eclipse-autosd) | Candidate automotive Linux integration for the HPC target |
+| [Eclipse S-CORE](https://github.com/eclipse-score) | Planned middleware path between the HPC and zonal layers |
+| [Eclipse Zenoh](https://github.com/eclipse-zenoh) | Planned zonal-to-end communication |
+| [Eclipse ThreadX](https://github.com/eclipse-threadx/threadx) | Planned RTOS for the microcontroller target |
 
 ---
 
@@ -472,15 +525,16 @@ A key addition in Phase 2 is the **End ECU layer** (STM32), which represents the
 
 | | Phase 1 | Phase 2 |
 |---|---|---|
-| **Goal** | Develop & validate logic | Validate on real hardware |
+| **Status** | Implemented | Under development |
+| **Goal** | Validate the deployed lifecycle and signal flow without automotive hardware | Exercise the same blueprint concepts on representative hardware |
 | **HPC** | Linux VM (QEMU) | NXP S32G2 |
 | **Zonal** | Not present | Raspberry Pi |
 | **End ECU** | Linux VM (QEMU) | STM32 |
 | **HPC ↔ End comms** | Eclipse Zenoh | — |
-| **HPC ↔ Zonal comms** | — | Eclipse SCore / SOME-IP |
+| **HPC ↔ Zonal comms** | — | Eclipse S-CORE / SOME/IP |
 | **Zonal ↔ End comms** | — | Eclipse Zenoh |
-| **Setup complexity** | Low — just Docker | Requires hardware |
-| **Best for** | App development, signal testing, OEM demos | Pre-production validation |
+| **Validation location** | Deployed QEMU environment | Planned physical targets |
+| **Setup requirements** | Hosted Playground and AosCloud access, two QEMU VMs, and host-side simulator | Hardware, board support, and target-specific integration |
 
 ---
 
@@ -490,6 +544,15 @@ A key addition in Phase 2 is the **End ECU layer** (STM32), which represents the
 |---|---|
 | digital.auto Playground | [playground.digital.auto](https://playground.digital.auto) |
 | Development Repository | [eclipse-autowrx/epam-service-connector](https://github.com/eclipse-autowrx/epam-service-connector) |
+| Eclipse SDV Blueprint Proposal | [eclipse-sdv-blueprints/blueprints#18](https://github.com/eclipse-sdv-blueprints/blueprints/issues/18) |
+| Eclipse AutoWRX | [github.com/eclipse-autowrx](https://github.com/eclipse-autowrx) |
+| AutoWRX SDV Runtime | [github.com/eclipse-autowrx/sdv-runtime](https://github.com/eclipse-autowrx/sdv-runtime) |
+| Eclipse KUKSA | [github.com/eclipse-kuksa](https://github.com/eclipse-kuksa) |
+| Eclipse Zenoh | [github.com/eclipse-zenoh](https://github.com/eclipse-zenoh) |
+| Eclipse Velocitas | [github.com/eclipse-velocitas](https://github.com/eclipse-velocitas) |
+| Velocitas Python SDK | [eclipse-velocitas/vehicle-app-python-sdk](https://github.com/eclipse-velocitas/vehicle-app-python-sdk) |
+| Velocitas C++ SDK | [eclipse-velocitas/vehicle-app-cpp-sdk](https://github.com/eclipse-velocitas/vehicle-app-cpp-sdk) |
 | digital.auto Website | [www.digital.auto](https://www.digital.auto) |
+| AosEdge Source | [github.com/aosedge](https://github.com/aosedge) |
+| AosEdge Documentation | [docs.aosedge.tech](https://docs.aosedge.tech/) |
 | AosCloud | [AosCloud](https://api.aoscloud.io/account/start) |
----
