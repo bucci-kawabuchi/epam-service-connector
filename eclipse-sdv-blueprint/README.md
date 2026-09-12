@@ -1,81 +1,137 @@
-# EV Range Extender Blueprint
+# SDV Application Prototyping Blueprint
 
-This blueprint demonstrates an **open, use-case-driven application lifecycle** for Software-Defined Vehicles (SDVs). The **EV Range Extender is the example application**; the **main deliverable is the reusable integration pattern** connecting application development, vehicle APIs, cloud-to-edge deployment, distributed communication, and validation.
+**A reusable pattern for developing an SDV application on the web, deploying it through a managed software lifecycle to virtual vehicle compute, and observing its behaviour in a cloud dashboard.**
 
-The blueprint combines Eclipse SDV projects and open interfaces so that individual components can be replaced or extended without changing the overall lifecycle concept. The hosted environments used by this repository are reference implementations of parts of that lifecycle, not the blueprint itself.
+This blueprint defines an end-to-end prototyping workflow for Software-Defined Vehicle (SDV) applications before physical vehicle hardware is available. A developer writes or modifies an application in a web environment, builds and versions it, deploys it through a lifecycle-management platform to virtual vehicle devices, exercises it with simulated vehicle signals, confirms its behaviour through a cloud dashboard, and repeats the loop. Eclipse SDV projects provide key building blocks for vehicle-data access, distributed communication, and the development environment across this workflow.
+
+This repository provides one working reference implementation using **digital.auto Playground** for web-based C++ authoring and dashboard visualization, **AosCloud** for application lifecycle management, **AosCore** for execution on QEMU-based virtual devices, and Eclipse KUKSA and Eclipse Zenoh for vehicle-data integration. The **EV Range Extender** is the example application used to demonstrate the blueprint.
+
+> **Reference implementation:** digital.auto Playground + AosEdge (AosCloud and AosCore) + QEMU, demonstrated through the EV Range Extender application.
+
+| Layer | Purpose | Representation in this repository |
+|---|---|---|
+| **Blueprint concept** | Defines the reusable SDV prototyping workflow | Web authoring → managed build and deployment → virtual vehicle execution → dashboard feedback → iteration |
+| **Reference implementation** | Provides one concrete implementation of the blueprint roles | digital.auto Playground + AosEdge (AosCloud and AosCore) + QEMU + Eclipse KUKSA + Eclipse Zenoh |
+| **Example application** | Makes the workflow observable through a vehicle feature | EV Range Extender |
 
 ## Table of Contents
 
-- [Blueprint Purpose](#blueprint-purpose)
-  - [Eclipse Projects and Open Standards](#eclipse-projects-and-open-standards)
-  - [Other Reference Components](#other-reference-components)
-  - [Implementation Status](#implementation-status)
+- [What This Blueprint Demonstrates](#what-this-blueprint-demonstrates)
+  - [The Prototyping Loop](#the-prototyping-loop)
+  - [Required Blueprint Capabilities](#required-blueprint-capabilities)
+  - [Eclipse SDV Projects and Open Standards](#eclipse-sdv-projects-and-open-standards)
+  - [What Can Be Evaluated](#what-can-be-evaluated)
+  - [Scope and Boundaries](#scope-and-boundaries)
 - [Demonstrated Use Case: EV Range Extender](#demonstrated-use-case-ev-range-extender)
   - [Use Case Flow](#use-case-flow)
   - [Vehicle Signals](#vehicle-signals)
+- [Applying the Blueprint to Another Vehicle Feature](#applying-the-blueprint-to-another-vehicle-feature)
 - [Current Reference Implementation](#current-reference-implementation)
-  - [Hosted Environments](#hosted-environments)
-  - [Current Workflow and Validation Boundary](#current-workflow-and-validation-boundary)
-- [Proposed Virtual-Prototyping Extension](#proposed-virtual-prototyping-extension)
-- [Phase 1 Reference Implementation: QEMU](#phase-1-reference-implementation-qemu)
+  - [Prototype Architecture](#prototype-architecture)
+  - [Implemented Workflow](#implemented-workflow)
+  - [Execution and Evaluation Boundary](#execution-and-evaluation-boundary)
+  - [Blueprint-to-Implementation Mapping](#blueprint-to-implementation-mapping)
+  - [Reference Implementation Status](#reference-implementation-status)
+- [Run the QEMU Prototype Environment](#run-the-qemu-prototype-environment)
   - [Component Distribution](#component-distribution)
   - [System Setup Workflow](#system-setup-workflow)
   - [Run the Demo](#run-the-demo)
+  - [Iterate the Prototype](#iterate-the-prototype)
   - [Signal Flow and Internals](#signal-flow-and-internals)
   - [Troubleshooting](#troubleshooting)
 - [Planned Phase 2: Physical Hardware](#planned-phase-2-physical-hardware)
+- [Phase Comparison](#phase-comparison)
 - [Project Resources](#project-resources)
 
 ---
 
-## Blueprint Purpose
+## What This Blueprint Demonstrates
 
-The blueprint is intended to show how an SDV application can move through a coherent lifecycle while using Eclipse projects at the relevant integration points:
+The blueprint connects application creation and vehicle-system integration in one repeatable prototyping workflow. It lets a developer change vehicle-application logic in a web environment and evaluate the resulting application on distributed virtual vehicle devices without first preparing physical automotive hardware.
 
-```text
-Define the use case and VSS contract
-        ↓
-Develop and package the application
-        ↓
-Publish it to a lifecycle-management backend
-        ↓
-Deploy and run it on an edge target
-        ↓
-Exchange vehicle signals across compute domains
-        ↓
-Observe, validate, update, and repeat
+The lifecycle-management path is part of the prototype itself. It provides the build, packaging, versioning, targeting, deployment, execution, and status feedback needed to turn a code change into a running vehicle-system experiment. These capabilities can be supplied by different technologies as long as the same end-to-end workflow and integration contracts are retained.
+
+### The Prototyping Loop
+
+```mermaid
+flowchart TD
+    A["Define feature behaviour and vehicle-data contract"] --> B["Write or modify the application in a web editor"]
+    B --> C["Build, package, sign, and register the application"]
+    C --> D["Deploy through lifecycle management to virtual vehicle compute"]
+    D --> E["Exercise the virtual vehicle and confirm behaviour on the dashboard"]
+    E --> B
 ```
 
-It is not intended to prescribe one hosted portal, cloud service, hardware platform, or programming language. The current implementation selects concrete technologies to make the pattern reproducible. Future implementations can substitute equivalent components while retaining the same interfaces and lifecycle stages.
+The blueprint flow is:
 
-### Eclipse Projects and Open Standards
+1. Define the vehicle feature, its expected behaviour, and the vehicle-data signals it consumes and produces.
+2. Write or modify the application and its deployment configuration in a web environment.
+3. Build, package, sign, and publish a versioned software artifact.
+4. Select the virtual vehicle targets and apply the application through the lifecycle-management platform.
+5. Execute the application on the virtual edge runtime together with its supporting vehicle services.
+6. Drive repeatable vehicle scenarios using simulated inputs.
+7. Exchange vehicle data across the virtual compute domains through standardized interfaces.
+8. Confirm application behaviour, vehicle-signal changes, and deployment status through cloud dashboards and runtime logs.
+9. Modify the application and repeat the deployment and observation loop.
 
-| Project or standard | Role in the blueprint | Status |
-|---|---|---|
-| [Eclipse AutoWRX](https://github.com/eclipse-autowrx) | Open-source implementation of the digital.auto development and prototyping environment; also provides the integration used to connect the running demo to the Playground dashboard | Used for the current dashboard integration; broader virtual-prototyping use is proposed |
-| [Eclipse KUKSA](https://github.com/eclipse-kuksa) | Vehicle data broker and API for reading and writing vehicle signals | Implemented in Phase 1 |
-| [Eclipse Zenoh](https://github.com/eclipse-zenoh) | Lightweight communication between the HPC and simulated ECU domains | Implemented in Phase 1 |
-| [Eclipse Velocitas](https://github.com/eclipse-velocitas) | SDKs and vehicle-model tooling that can help keep Python prototypes and C++ implementations aligned to the same vehicle API | Proposed for the prototype-to-C++ workflow |
-| [Eclipse S-CORE](https://github.com/eclipse-score) | Communication and middleware capabilities for the planned HPC-to-zonal integration | Planned for Phase 2 |
-| [Eclipse ThreadX](https://github.com/eclipse-threadx/threadx) | RTOS for the planned microcontroller-based end-ECU layer | Planned for Phase 2 |
-| [COVESA Vehicle Signal Specification](https://github.com/COVESA/vehicle_signal_specification) | Common semantic contract for vehicle signals across development and deployment environments | Used throughout the blueprint |
+### Required Blueprint Capabilities
 
-### Other Reference Components
+An implementation of the blueprint needs to provide the following capabilities:
 
-| Component | Role in the current implementation |
+| Capability | Purpose in the prototyping workflow |
 |---|---|
-| [AosCore](https://github.com/aosedge) | Open-source edge runtime and orchestrator deployed on the QEMU targets |
-| AosCloud | Hosted reference backend for application registry, target configuration, and lifecycle orchestration |
-| [QEMU](https://www.qemu.org/) | Virtualizes the two Linux compute targets used by Phase 1 |
-| Hardware simulator in this repository | Supplies reproducible battery and cabin inputs to the deployed system |
+| Web-based application workspace | Edit the application and its deployment configuration |
+| Build and packaging toolchain | Produce a deployable application artifact |
+| Application registry and version management | Store and identify prototype versions |
+| Target and deployment management | Select virtual devices and apply the intended software version |
+| Edge runtime and orchestration | Retrieve, configure, start, stop, and update the application |
+| Vehicle-data contract and access layer | Connect application logic to vehicle signals without device-specific coupling |
+| Inter-domain communication | Exchange data between distributed virtual vehicle compute domains |
+| Simulation and scenario input | Exercise the prototype under repeatable vehicle conditions |
+| Cloud dashboard and observability | Confirm deployment state, vehicle signals, and application behaviour |
 
-### Implementation Status
+The technologies used to provide these capabilities are implementation choices. The current selections are described later in [Current Reference Implementation](#current-reference-implementation).
 
-| Scope | Status | What it demonstrates |
+### Eclipse SDV Projects and Open Standards
+
+The blueprint demonstrates how Eclipse SDV projects and open vehicle interfaces can be combined within one prototyping loop. Some projects are already integrated in the current QEMU environment, while others extend the same concept toward representative automotive hardware in Phase 2.
+
+| Project or standard | Role in the blueprint | Status in this repository |
 |---|---|---|
-| Phase 1: QEMU reference implementation | Available | Build, registry publication, AosEdge deployment, distributed vehicle-signal flow, dashboard observation, and validation on two QEMU VMs |
-| Playground virtual-prototype stage | Proposed | Python business-logic validation against a virtual vehicle before the production implementation is built and deployed |
-| Phase 2: physical hardware | Under development | Migration of the reference architecture to HPC, zonal, and end-ECU hardware |
+| [Eclipse AutoWRX](https://github.com/eclipse-autowrx) | Open-source foundation for the digital.auto development and prototyping environment | Its capabilities are accessed through the hosted digital.auto Playground used for C++ authoring and dashboard visualization |
+| [Eclipse KUKSA](https://github.com/eclipse-kuksa) | Vehicle-data broker and API for reading and writing VSS signals | Implemented in the QEMU reference environment |
+| [Eclipse Zenoh](https://github.com/eclipse-zenoh) | Communication between the distributed virtual vehicle compute domains | Implemented between the Phase 1 QEMU devices; also planned for the Phase 2 zonal-to-ECU path |
+| [Eclipse AutoSD](https://github.com/eclipse-autosd/eclipse-autosd) | Candidate automotive Linux integration for the HPC target | Planned for Phase 2 |
+| [Eclipse S-CORE](https://github.com/eclipse-score) | Middleware and communication capabilities for the HPC-to-zonal path | Planned for Phase 2 |
+| [Eclipse ThreadX](https://github.com/eclipse-threadx/threadx) | RTOS for the microcontroller-based end-ECU layer | Planned for Phase 2 |
+| [COVESA Vehicle Signal Specification](https://github.com/COVESA/vehicle_signal_specification) | Common semantic contract for vehicle signals across development and execution environments | Used throughout the blueprint |
+
+The current implementation is therefore both a working prototyping environment and an integration example for Eclipse SDV technologies. The [Current Reference Implementation](#current-reference-implementation) section explains how these projects are combined with Playground, AosEdge, and QEMU.
+
+### What Can Be Evaluated
+
+The current environment can be used to explore and evaluate:
+
+- vehicle-application behaviour and decision logic;
+- the vehicle-data signals consumed and produced by the application;
+- application packaging, configuration, versioning, and target assignment;
+- lifecycle-managed deployment to distributed virtual vehicle devices;
+- service placement and communication across virtual compute domains;
+- observable system responses under repeatable simulated inputs;
+- the complete web-code-to-virtual-vehicle iteration workflow;
+- how the same blueprint pattern can be applied to different vehicle applications and technology stacks.
+
+### Scope and Boundaries
+
+In the current reference implementation, the prototype application executes and is functionally evaluated on the QEMU environment. The web environment provides the code editor, build-and-deploy controls, and dashboard; it is not itself the execution target.
+
+This blueprint does not claim to validate:
+
+- production performance or real-time guarantees;
+- functional-safety or mixed-criticality certification;
+- target-specific isolation, security assurance, or hardware constraints;
+- physical sensors, actuators, networks, or vehicle dynamics;
+- production readiness of the EV Range Extender algorithm.
 
 ---
 
@@ -110,30 +166,51 @@ The current demo also does not make a functional-safety or mixed-criticality cer
 
 ---
 
+## Applying the Blueprint to Another Vehicle Feature
+
+The EV Range Extender is one worked example. To prototype another SDV application with the same workflow:
+
+1. Define the feature behaviour and its vehicle-data contract.
+2. Select or implement components for the blueprint capabilities listed above.
+3. Add or adapt the simulated vehicle services and input scenarios needed by the feature.
+4. Create the application and deployment configuration in the web environment.
+5. Build, publish, assign, and deploy the application to the virtual vehicle targets.
+6. Connect its inputs and outputs through the selected vehicle-data and communication layers.
+7. Add the relevant values and states to the cloud dashboard.
+8. Exercise the feature, inspect its behaviour, modify the application, and redeploy.
+
+The current Playground and AosEdge implementation can be reused, or equivalent technologies can be integrated behind the same blueprint roles. The reusable contribution is the prototyping workflow and its integration pattern; the EV Range Extender supplies one understandable application, vehicle-signal contract, set of services, test scenario, and visible result.
+
+---
+
 ## Current Reference Implementation
 
-The current implementation uses a hosted development portal and lifecycle backend to make the blueprint quick to access, while running the actual application and support services on QEMU-based edge targets.
+This repository provides a concrete implementation of the blueprint using digital.auto Playground and AosEdge. It combines web-based C++ application development, cloud lifecycle management, two QEMU virtual devices, simulated vehicle services, standardized vehicle signals, and cloud-dashboard feedback.
 
-### Hosted Environments
+### Prototype Architecture
 
-- **digital.auto Playground** is the convenient hosted environment used to edit and host the application definition, trigger the build and deployment flow, select the runtime, and visualize the running demo. [Eclipse AutoWRX](https://github.com/eclipse-autowrx) is the open-source implementation of digital.auto and is the appropriate basis for reproducing or extending these capabilities outside the hosted Playground.
-- **AosCloud** is the hosted lifecycle-management backend used by this reference implementation for the application registry, target configuration, and deployment orchestration. It is one implementation choice within the blueprint rather than a required definition of the blueprint concept.
-- **AosCore on QEMU** is where the current application is deployed and executed. The supporting BMS, HVAC, seat, and range services run across the two virtual machines and exchange data through KUKSA and Zenoh.
+![Architecture Phase 1](./images/architecture_phase1.svg)
 
-The repository currently documents and validates this specific combination. Alternative deployments using a local AutoWRX stack or another compatible lifecycle backend are possible extensions, but they are not part of the tested setup described below.
+The main roles are:
 
-> **Reproducibility note:** The current deployment procedure requires access to the hosted AosCloud service. AosCloud is therefore treated here as a reference lifecycle backend, not as a mandatory Eclipse blueprint component. This repository does not yet provide or validate a fully self-hosted replacement for that backend.
+1. **Web application development** — the digital.auto Playground prototype page embeds the AosCloud Deployment plugin, which provides the C++ editor, service configuration, and build-and-deploy action.
+2. **Build and packaging** — the remote AosEdge toolchain compiles, packages, signs, and publishes the C++ application as a deployable service version.
+3. **Lifecycle management** — AosCloud registers the application, manages its versions and targets, and orchestrates deployment.
+4. **Virtual vehicle execution** — AosCore retrieves, installs, configures, and executes the application and supporting services on two QEMU devices.
+5. **Vehicle integration** — COVESA VSS and Eclipse KUKSA provide the vehicle-data contract and broker, while Eclipse Zenoh connects the virtual compute domains.
+6. **Scenario and feedback** — the host-side simulator drives repeatable vehicle conditions, and the cloud-hosted Playground dashboard displays the resulting signals and behaviour.
 
-**[Open the EV Range Extender in digital.auto Playground](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/view)**
-
-### Current Workflow and Validation Boundary
+### Implemented Workflow
 
 ```text
 digital.auto Playground
-  Edit/configure the application and trigger the C++ build
+  Open the prototype and edit C++ code and service configuration
+        ↓
+AosCloud Deployment plugin and build toolchain
+  Remotely build, package, sign, and publish a versioned application
         ↓
 AosCloud
-  Store the package, configure the target, and orchestrate deployment
+  Apply the version to a preconfigured target and manage deployment
         ↓
 AosCore on QEMU-VM-1 and QEMU-VM-2
   Run the application and supporting ECU services
@@ -142,39 +219,61 @@ Hardware simulator + KUKSA + Zenoh
   Provide signals and connect the simulated vehicle domains
         ↓
 digital.auto Playground dashboard
-  Observe the behaviour of the deployed system
+  Confirm the behaviour of the deployed system
+        ↓
+Modify the C++ application and repeat
 ```
 
-In the current setup, Playground enables code editing, code hosting, the build/deployment trigger, and dashboard visualization. **Functional validation of the EV Range Extender takes place after deployment on the QEMU reference environment; the application is not first executed and validated as a virtual prototype inside Playground.** This distinction is important when evaluating what the current blueprint demonstrates.
+**[Open the EV Range Extender in digital.auto Playground](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/view)**
+
+### Execution and Evaluation Boundary
+
+The C++ code is authored in the web environment, but the application is executed and functionally confirmed only after lifecycle-managed deployment to the QEMU devices. The cloud dashboard closes the prototyping loop by displaying the behaviour and vehicle signals of that deployed application.
+
+The current blueprint therefore demonstrates a **web-to-virtual-vehicle system prototype**: C++ authoring begins on the web, evaluation takes place on the deployed QEMU system, and the observed results feed the next development iteration.
+
+### Blueprint-to-Implementation Mapping
+
+The following table maps each blueprint capability to the technology selected for this repository's reference implementation.
+
+| Blueprint capability | Reference implementation | Role in this repository |
+|---|---|---|
+| Web-based C++ development | digital.auto Playground, based on Eclipse AutoWRX, with the AosCloud Deployment plugin | Provides the C++ editor, service configuration, build-and-deploy action, and cloud dashboard |
+| Build, packaging, signing, and publication | AosEdge toolchain | Produces and uploads a signed, versioned application bundle |
+| Application registry and lifecycle management | AosCloud | Stores published versions, applies assignments to preconfigured targets, and reports deployment status |
+| Edge lifecycle and execution | [AosCore](https://github.com/aosedge) | Retrieves, installs, configures, and runs the application and services |
+| Virtual vehicle devices | [QEMU](https://www.qemu.org/) | Provides the two distributed Linux compute targets |
+| Vehicle signal model | [COVESA VSS](https://github.com/COVESA/vehicle_signal_specification) | Defines the common vehicle-data contract |
+| Vehicle data access | [Eclipse KUKSA](https://github.com/eclipse-kuksa) | Provides brokered access to vehicle signals |
+| Inter-domain communication | [Eclipse Zenoh](https://github.com/eclipse-zenoh) | Exchanges data across the virtual compute domains |
+| Dashboard connectivity | KUKSA Syncer | Synchronizes deployed vehicle signals with the Playground dashboard |
+| Vehicle scenarios | Hardware simulator and deployed BMS/HVAC/seat/range services | Generate repeatable inputs and observable system responses |
+
+The current setup uses hosted digital.auto Playground and AosCloud services to make the workflow quick to access. [Eclipse AutoWRX](https://github.com/eclipse-autowrx) is the open-source implementation of digital.auto and provides the basis for the Playground capabilities.
+
+These hosted environments are part of the reference implementation, not mandatory definitions of the blueprint. Equivalent components could implement the same roles and workflow. However, the procedures in this repository are implemented and tested with Playground, AosCloud, and AosCore; alternative combinations are not supplied or validated here. The documented setup currently requires access to the hosted AosCloud lifecycle backend.
+
+### Reference Implementation Status
+
+| Scope | Status | What it demonstrates |
+|---|---|---|
+| Web-based C++ application development | **Available** | Edit the EV Range Extender application and its service configuration in the web environment |
+| Build, versioning, and lifecycle-managed QEMU deployment | **Available** | Package and publish the application, assign it to virtual devices, and run it under AosCore |
+| Vehicle-signal integration and cloud-dashboard confirmation | **Available** | Exercise the deployed application with simulated signals and observe its resulting behaviour |
+| Iterative edit-deploy-observe loop | **Available** | Modify the C++ application, publish a new version, redeploy it, and compare results |
+| Physical hardware transition | Under development | Apply the same prototyping lifecycle to representative HPC, zonal, and end-ECU targets |
 
 ---
 
-## Proposed Virtual-Prototyping Extension
+## Run the QEMU Prototype Environment
 
-A useful next step is to add an explicit virtual-prototype stage before the C++ application is packaged and deployed. This would make the lifecycle closer to the intended digital.auto development model while remaining a relatively small extension of the current setup:
-
-1. Develop the initial vehicle-application logic in Python in digital.auto Playground.
-2. Run it against an AutoWRX virtual vehicle environment, such as the [AutoWRX SDV Runtime](https://github.com/eclipse-autowrx/sdv-runtime), using simulated VSS inputs.
-3. Validate thresholds, signal interactions, state transitions, and expected outputs before edge deployment.
-4. Capture the validated VSS model, configuration, scenarios, and automated behavioural tests as the portable application contract.
-5. Productionize the application in C++ using the [Eclipse Velocitas C++ SDK](https://github.com/eclipse-velocitas/vehicle-app-cpp-sdk) and common vehicle-model tooling where applicable.
-6. Build and deploy the C++ implementation through the existing AosCloud/AosCore reference flow, then run the same scenarios on QEMU to verify behavioural parity.
-
-This should be described as **Python prototyping followed by C++ productionization**, not as automatic Python-to-C++ conversion. The portable assets are the vehicle API contract, configuration, scenarios, expected behaviour, and tests; the C++ application remains a deliberate implementation that must be verified independently.
-
----
-
-## Phase 1 Reference Implementation: QEMU
-
-![Architecture Phase 1](./images/architecture_phase1.svg)
-
-Phase 1 is the implemented reference environment. It runs the application and its supporting services across two QEMU-based Linux VMs, allowing the lifecycle, deployment, vehicle-data flow, and application behaviour to be exercised without automotive hardware.
+The QEMU environment is the current runnable implementation of the blueprint. It runs the C++ application and its supporting services across two Linux virtual devices, allowing the complete web-coding, lifecycle-management, execution, and dashboard-feedback loop to be exercised without automotive hardware.
 
 ### Component Distribution
 
 | Layer | Current component | Responsibility |
 |---|---|---|
-| Hosted development environment | digital.auto Playground | Application editing and hosting, build/deployment trigger, runtime selection, and dashboard visualization |
+| Web development environment | digital.auto Playground and AosCloud Deployment plugin | C++ editing, service configuration, build/deployment initiation, and dashboard visualization |
 | Lifecycle backend | AosCloud | Application registry, versioning, target configuration, and deployment orchestration |
 | QEMU-VM-1 | AosCore, EV Range Extender application, KUKSA integration | Runs the main application and battery-related signal logic |
 | QEMU-VM-2 | BMS, range, HVAC, and seat services | Simulates vehicle functions and the end-ECU domain |
@@ -184,7 +283,7 @@ Phase 1 is the implemented reference environment. It runs the application and it
 
 ### System Setup Workflow
 
-This section describes the end-to-end setup required to recreate the Phase 1 demo from scratch.
+This section describes the end-to-end setup required to recreate the current QEMU prototype environment from scratch.
 
 The setup is organized into sub-sections that guide the VM setup and deployment flow in a practical sequence.
 
@@ -367,6 +466,19 @@ Complete Sections 1, 2, and 3 above before running the demo.
 
 7. Review the application-level logs and confirm that the expected threshold actions occurred.
 
+### Iterate the Prototype
+
+After confirming the deployed behaviour:
+
+1. Return to the AosCloud Deployment plugin in the Playground prototype.
+2. Modify the EV Range Extender C++ logic or its service configuration.
+3. Update the application version as required by the deployment workflow.
+4. Select `Build and Deploy` to publish and assign the new version.
+5. Wait until AosCloud reports the deployment as ready on the target unit.
+6. Run the same simulator scenario and compare the dashboard behaviour and runtime logs.
+
+This repeated C++ edit, lifecycle-managed deployment, and dashboard-confirmation cycle is the core prototyping workflow demonstrated by the blueprint.
+
 ### Signal Flow and Internals
 
 The demo runs as a closed loop across the host, virtual machines, and Playground dashboard integration.
@@ -425,10 +537,10 @@ Before performing these checks, verify the bridge and external interface names o
 1. SSH into the secondary VM:
 
     ```bash
-    ssh ubuntu@10.0.0.X 
+    ssh ubuntu@10.0.0.X
     ```
     If the filesystem is mounted read-only, remount it as writable:
-    
+
     ```bash
     mount -o rw,remount /
     ```
@@ -470,14 +582,14 @@ Before performing these checks, verify the bridge and external interface names o
 
 ![Architecture Phase 2](./images/architecture_phase2.svg)
 
-Phase 2 is a design target and is not yet available for trial. It is intended to replace the two virtual machines with representative HPC, zonal, and end-ECU hardware while preserving the VSS application contract and as much of the Phase 1 lifecycle as practical. The exact hardware integration and software distribution may change as implementation progresses.
+Phase 2 is the planned evolution from the QEMU prototype to representative automotive hardware. It is not yet available for trial. The intention is to replace the two virtual devices with HPC, zonal, and end-ECU targets while preserving the C++ application, VSS contract, and as much of the lifecycle-managed prototyping workflow as practical. The exact hardware integration and software distribution may change as implementation progresses.
 
 The planned end-ECU layer uses an STM32-class microcontroller to represent the compute directly connected to sensors and actuators. The phase also introduces an explicit zonal layer between the HPC and end ECU.
 
 ### Planned Flow
 
 ```
-1. Use the same reference lifecycle flow as Phase 1
+1. Reuse the web-based C++ development and lifecycle-management flow
         ↓
 2. Run the application on an NXP S32G2-based HPC target
         ↓
@@ -507,7 +619,7 @@ The planned end-ECU layer uses an STM32-class microcontroller to represent the c
 | `Vehicle.Infotainment.Display.Brightness` | End ECU | Dim screen to reduce power draw |
 | `Vehicle.Cabin.Seat.Ventilation.Level` | End ECU | Disable seat ventilation |
 
-These signals are candidates for expanding the physical-hardware demonstration; they are not implemented by the current Phase 1 setup.
+These signals are candidates for expanding the physical-hardware demonstration; they are not implemented by the current QEMU prototype.
 
 
 ### Additional Eclipse Projects Planned for Phase 2
@@ -526,7 +638,7 @@ These signals are candidates for expanding the physical-hardware demonstration; 
 | | Phase 1 | Phase 2 |
 |---|---|---|
 | **Status** | Implemented | Under development |
-| **Goal** | Validate the deployed lifecycle and signal flow without automotive hardware | Exercise the same blueprint concepts on representative hardware |
+| **Goal** | Prototype the C++ application and its deployed behaviour without automotive hardware | Evolve the same application and lifecycle toward representative hardware |
 | **HPC** | Linux VM (QEMU) | NXP S32G2 |
 | **Zonal** | Not present | Raspberry Pi |
 | **End ECU** | Linux VM (QEMU) | STM32 |
@@ -546,12 +658,14 @@ These signals are candidates for expanding the physical-hardware demonstration; 
 | Development Repository | [eclipse-autowrx/epam-service-connector](https://github.com/eclipse-autowrx/epam-service-connector) |
 | Eclipse SDV Blueprint Proposal | [eclipse-sdv-blueprints/blueprints#18](https://github.com/eclipse-sdv-blueprints/blueprints/issues/18) |
 | Eclipse AutoWRX | [github.com/eclipse-autowrx](https://github.com/eclipse-autowrx) |
-| AutoWRX SDV Runtime | [github.com/eclipse-autowrx/sdv-runtime](https://github.com/eclipse-autowrx/sdv-runtime) |
+| AosCloud Deployment plugin | [aos-cloud-deployment](../aos-cloud-deployment/README.md) |
+| AosEdge toolchain | [aos-edge-toolchain](../aos-edge-toolchain/README.md) |
 | Eclipse KUKSA | [github.com/eclipse-kuksa](https://github.com/eclipse-kuksa) |
 | Eclipse Zenoh | [github.com/eclipse-zenoh](https://github.com/eclipse-zenoh) |
-| Eclipse Velocitas | [github.com/eclipse-velocitas](https://github.com/eclipse-velocitas) |
-| Velocitas Python SDK | [eclipse-velocitas/vehicle-app-python-sdk](https://github.com/eclipse-velocitas/vehicle-app-python-sdk) |
-| Velocitas C++ SDK | [eclipse-velocitas/vehicle-app-cpp-sdk](https://github.com/eclipse-velocitas/vehicle-app-cpp-sdk) |
+| Eclipse AutoSD | [github.com/eclipse-autosd/eclipse-autosd](https://github.com/eclipse-autosd/eclipse-autosd) |
+| Eclipse S-CORE | [github.com/eclipse-score](https://github.com/eclipse-score) |
+| Eclipse ThreadX | [github.com/eclipse-threadx/threadx](https://github.com/eclipse-threadx/threadx) |
+| COVESA VSS | [github.com/COVESA/vehicle_signal_specification](https://github.com/COVESA/vehicle_signal_specification) |
 | digital.auto Website | [www.digital.auto](https://www.digital.auto) |
 | AosEdge Source | [github.com/aosedge](https://github.com/aosedge) |
 | AosEdge Documentation | [docs.aosedge.tech](https://docs.aosedge.tech/) |
