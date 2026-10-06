@@ -311,7 +311,7 @@ This step sets up two QEMU VM instances where the SDV application and its surrou
 
 - You may need to run `chmod +x aos_vm.sh` to allow the execution of `aos_vm.sh`.
 
-- If the Aos certificates are unavailable or the setup has not been completed, follow the [Aos QuickStart](https://docs.aosedge.tech/docs/quick-start/).
+- If the AosEdge certificates are unavailable or the setup has not been completed, follow the [AosEdge QuickStart](https://docs.aosedge.tech/docs/quick-start/).
 
   - Complete the QuickStart guide only through the **Get access** step. No additional QuickStart steps are required.
   - Perform these steps on WSL or Ubuntu.
@@ -337,9 +337,9 @@ This step sets up two QEMU VM instances where the SDV application and its surrou
   aos-prov provision -u 10.0.0.100
   ```
 
-- Log in to the [Aos Dashboard](https://api.aoscloud.io/account/start), select the OEM login option, and choose the certificate-based sign-in that appears when you open the [Units tab](https://oem.aoscloud.io/oem/units).
+- Log in to the [AosEdge Dashboard](https://api.aoscloud.io/account/start), select the OEM login option, and choose the certificate-based sign-in that appears when you open the [Units tab](https://oem.aoscloud.io/oem/units).
 
-- If the unit appears offline in the Aos Dashboard, follow the [VM network troubleshooting steps](#vm-network).
+- If the unit appears offline in the AosEdge Dashboard, follow the [VM network troubleshooting steps](#vm-network).
 
 **Install the core components**
 
@@ -389,7 +389,7 @@ This step deploys the components that produce the data required for the SDV appl
   aos-signer go
   ```
 
-- Verify the deployment result in [Aos Dashboard Services](https://sp.aoscloud.io/sp/services).
+- Verify the deployment result in [AosEdge Dashboard Services](https://sp.aoscloud.io/sp/services).
 - If the deployment does not appear or is rejected, update the service version in `kuksa-syncer/config.yaml` and re-run `aos-signer go`.
 - Check the [deployment bundles](https://sp.aoscloud.io/sp/deployment-bundles) if an error occurs during deployment.
 
@@ -405,9 +405,9 @@ This step deploys the components that produce the data required for the SDV appl
 
 The script `aos-automation.py` performs the end-to-end AosEdge setup, including unit-config updates, unit-set creation, subject creation, and service assignment. See [AosEdge setup (manual)](AosEdge%20setup%20(manual).md) for the equivalent manual procedure.
 
-1. In [AOS Cloud deployment on playground](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/plug?plugid=aos-cloud-deployment), upload OEM certificates to the AOS Edge setup.
+1. In [AosCloud deployment on playground](https://playground.digital.auto/model/67f76c0d8c609a0027662a69/library/prototype/69ce30f438bb8e98f0af5ac8/plug?plugid=aos-cloud-deployment), upload OEM certificates to the AosEdge setup.
 
-   ![Upload the OEM certificates in the AOS Edge setup](./images/aosedge-setup-automation.png)
+   ![Upload the OEM certificates in the AosEdge setup](./images/aosedge-setup-automation.png)
 
 2. Select the required unit.
 
@@ -417,7 +417,7 @@ The script `aos-automation.py` performs the end-to-end AosEdge setup, including 
 
 This button automates the manual steps of creating a `unitset`, creating a `subject`, and configuring the target system.
 
-**Note:** If the automated AOS Edge setup is complete, skip the following manual automation steps because the button and script perform the same tasks.
+**Note:** If the automated AosEdge setup is complete, skip the following manual automation steps because the button and script perform the same tasks.
 
 1. Change into the automation directory
    ```bash
@@ -668,12 +668,9 @@ These signals are candidates for expanding the physical-hardware demonstration; 
 
 | Resource | Link |
 |---|---|
-| digital.auto Playground | [playground.digital.auto](https://playground.digital.auto) |
 | Development Repository | [eclipse-autowrx/epam-service-connector](https://github.com/eclipse-autowrx/epam-service-connector) |
 | Eclipse SDV Blueprint Proposal | [eclipse-sdv-blueprints/blueprints#18](https://github.com/eclipse-sdv-blueprints/blueprints/issues/18) |
 | Eclipse AutoWRX | [github.com/eclipse-autowrx](https://github.com/eclipse-autowrx) |
-| AosCloud Deployment plugin | [aos-cloud-deployment](../aos-cloud-deployment/README.md) |
-| AosEdge toolchain | [aos-edge-toolchain](../aos-edge-toolchain/README.md) |
 | Eclipse KUKSA | [github.com/eclipse-kuksa](https://github.com/eclipse-kuksa) |
 | Eclipse Zenoh | [github.com/eclipse-zenoh](https://github.com/eclipse-zenoh) |
 | Eclipse AutoSD | [github.com/eclipse-autosd/eclipse-autosd](https://github.com/eclipse-autosd/eclipse-autosd) |
@@ -681,6 +678,9 @@ These signals are candidates for expanding the physical-hardware demonstration; 
 | Eclipse ThreadX | [github.com/eclipse-threadx/threadx](https://github.com/eclipse-threadx/threadx) |
 | COVESA VSS | [github.com/COVESA/vehicle_signal_specification](https://github.com/COVESA/vehicle_signal_specification) |
 | digital.auto Website | [www.digital.auto](https://www.digital.auto) |
-| AosEdge Source | [github.com/aosedge](https://github.com/aosedge) |
+| digital.auto Playground | [playground.digital.auto](https://playground.digital.auto) |
+| AosEdge (AosCore) Source | [github.com/aosedge](https://github.com/aosedge) |
 | AosEdge Documentation | [docs.aosedge.tech](https://docs.aosedge.tech/) |
 | AosCloud | [AosCloud](https://api.aoscloud.io/account/start) |
+| AosEdge toolchain | [aos-edge-toolchain](../aos-edge-toolchain/README.md) |
+| AosCloud Deployment plugin | [aos-cloud-deployment](../aos-cloud-deployment/README.md) |
